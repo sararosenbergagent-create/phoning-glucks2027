@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Phoning militants</title>
+<style>
+:root{--bleu:#00329e;--rose:#e6007e;--gris:#6b7280;--fond:#f4f6fb;--ok:#0a7d3b}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--fond);color:#111;font-size:17px;line-height:1.4}
+header{background:var(--bleu);color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center}
+header b{font-size:18px}
+header small{opacity:.85}
+.test{background:#fff3cd;color:#7a5b00;text-align:center;font-size:13px;padding:6px}
+main{max-width:560px;margin:0 auto;padding:16px}
+.carte{background:#fff;border-radius:14px;padding:18px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+h2{margin:0 0 10px;font-size:20px;color:var(--bleu)}
+h3{margin:14px 0 8px;font-size:16px;color:var(--bleu)}
+.btn{display:block;width:100%;border:0;border-radius:12px;padding:16px;font-size:18px;font-weight:700;cursor:pointer;text-align:center;text-decoration:none;margin-top:10px}
+.btn.bleu{background:var(--bleu);color:#fff}
+.btn.rose{background:var(--rose);color:#fff}
+.btn.vert{background:var(--ok);color:#fff}
+.btn.gris{background:#e5e7eb;color:#111}
+.btn:disabled{opacity:.4}
+input[type=text],input[type=password],input[type=number],input[type=date],select,textarea{width:100%;font-size:17px;padding:12px;border:1px solid #cbd2e0;border-radius:10px;font-family:inherit;background:#fff}
+textarea{min-height:90px}
+label.case{display:flex;gap:12px;align-items:flex-start;padding:12px;border:1px solid #e1e5ee;border-radius:10px;margin-bottom:8px;cursor:pointer}
+label.case input{width:22px;height:22px;flex:none;margin-top:1px}
+.nom{font-size:24px;font-weight:800}
+.statut{display:inline-block;padding:3px 10px;border-radius:20px;font-size:14px;font-weight:700;margin:6px 0}
+.statut.adh{background:#dbe5ff;color:var(--bleu)}
+.statut.sym{background:#ffe0f0;color:#a10058}
+.tel{font-size:22px;font-weight:700;letter-spacing:.5px}
+ul.arg{padding-left:20px;margin:6px 0}
+ul.arg li{margin-bottom:6px}
+.accroche{background:#eef3ff;border-left:4px solid var(--bleu);padding:10px 12px;border-radius:6px;margin:8px 0;font-style:italic}
+.q{margin-bottom:14px}
+.q > span{display:block;font-weight:700;margin-bottom:6px}
+.choix{display:flex;flex-wrap:wrap;gap:8px}
+.choix label{border:1px solid #cbd2e0;border-radius:20px;padding:8px 14px;cursor:pointer;background:#fff}
+.choix input{margin-right:6px}
+.aide{font-size:14px;color:var(--gris)}
+.erreur{color:#b00020;font-weight:700;margin-top:8px}
+.cache{display:none}
+footer{text-align:center;font-size:12px;color:var(--gris);padding:20px 16px 40px}
+footer a{color:var(--gris)}
+</style>
+</head>
+<body>
+<header><b>📞 Phoning militants</b><small id="qui"></small></header>
+<div class="test">Prototype de test interne · faux contacts, aucune donnée réelle</div>
+<main>
+
+<!-- Écran 1 : connexion -->
+<section id="e-connexion" class="carte">
+  <h2>Connexion</h2>
+  <p class="aide">Entrez votre code personnel.</p>
+  <input id="code" type="password" autocomplete="off" placeholder="Votre code">
+  <div id="charteBloc" class="cache">
+    <h3>Charte de confidentialité</h3>
+    <ul class="arg">
+      <li>Les informations affichées servent uniquement à cet appel.</li>
+      <li>Je ne note, ne copie et ne partage aucun numéro ni aucun nom.</li>
+      <li>Dans le commentaire, j'écris des faits utiles, jamais d'avis sur la personne.</li>
+      <li>Si la personne demande à ne plus être appelée ou à être retirée du fichier, je coche la case correspondante.</li>
+    </ul>
+    <label class="case"><input type="checkbox" id="charteOk"> J'ai lu et j'accepte la charte.</label>
+  </div>
+  <button class="btn bleu" id="bConnexion">Se connecter</button>
+  <div id="errConnexion" class="erreur"></div>
+</section>
+
+<!-- Écran 2 : choix campagne + prochain contact -->
+<section id="e-accueil" class="carte cache">
+  <h2>Bonjour <span id="prenomMilitant"></span></h2>
+  <label class="aide" for="campagne">Campagne</label>
+  <select id="campagne"></select>
+  <p class="aide" id="resteInfo"></p>
+  <button class="btn bleu" id="bProchain">Afficher le prochain contact</button>
+  <div id="errAccueil" class="erreur"></div>
+  <button class="btn gris" id="bDeconnexion">Se déconnecter</button>
+</section>
+
+<!-- Écran 3 et 4 : fiche, appel, formulaire -->
+<section id="e-fiche" class="cache">
+  <div class="carte">
+    <div class="nom" id="fNom"></div>
+    <span class="statut" id="fStatut"></span>
+    <div class="tel" id="fTel"></div>
+    <p class="aide" id="fReserve"></p>
+    <a class="btn rose" id="bAppel" href="#">Je lance l'appel</a>
+  </div>
+  <div class="carte">
+    <h2>Arguments de la campagne</h2>
+    <h3>Accroche</h3>
+    <div class="accroche" id="fAccroche"></div>
+    <h3>Infos clés</h3>
+    <ul class="arg" id="fArguments"></ul>
+    <h3>Message sur répondeur</h3>
+    <div class="accroche" id="fRepondeur"></div>
+  </div>
+
+  <div id="blocAppel" class="cache">
+    <div class="carte">
+      <h2>Résultat de l'appel</h2>
+      <label class="case"><input type="checkbox" name="issue" value="pas_decroche"> N'a pas décroché</label>
+      <label class="case"><input type="checkbox" name="issue" value="repondeur"> Laissé un message sur répondeur</label>
+      <label class="case"><input type="checkbox" name="issue" value="rappel"> Veut être rappelé plus tard</label>
+      <div id="blocRappel" class="cache q">
+        <span>Quand ?</span>
+        <input type="date" id="rappelDate">
+        <select id="rappelCreneau" style="margin-top:8px">
+          <option value="">Créneau (facultatif)</option>
+          <option>Matin</option><option>Midi</option><option>Après-midi</option><option>Soir</option>
+        </select>
+      </div>
+      <label class="case"><input type="checkbox" name="issue" value="ne_plus_appeler"> Ne souhaite plus être contacté par téléphone</label>
+      <label class="case"><input type="checkbox" name="issue" value="suppression"> Souhaite être supprimé du fichier</label>
+    </div>
+    <div class="carte" id="blocFormulaire">
+      <h2>Formulaire</h2>
+      <div id="questions"></div>
+      <div class="q">
+        <span>Commentaire</span>
+        <textarea id="commentaire" placeholder="Faits utiles seulement, pas d'avis sur la personne."></textarea>
+      </div>
+    </div>
+    <button class="btn vert" id="bEnregistrer">Enregistrer</button>
+    <div id="errEnregistrer" class="erreur"></div>
+  </div>
+</section>
+
+<!-- Écran 5 : fin -->
+<section id="e-fin" class="carte cache">
+  <h2>✅ Appel enregistré</h2>
+  <p id="finInfo"></p>
+  <button class="btn bleu" id="bSuivant">Passer au contact suivant</button>
+  <button class="btn gris" id="bPause">Faire une pause</button>
+</section>
+
+</main>
+<footer>
+  Prototype de test interne. Projet bénévole de Place publique Boulogne-Billancourt, inspiré des outils de Place publique Paris 15.<br>
+  Infos du meeting : glucks2027.fr/meeting. Contact : Sara Rosenberg (<a href="mailto:contact@sara-rosenberg.fr">contact@sara-rosenberg.fr</a>)
+</footer>
+
+<script>
+/* =====================================================================
+   RELAIS SIMULÉ. Dans la vraie version, ces fonctions appellent le
+   script Google qui garde la clé Brevo. Ici tout reste dans le
+   navigateur, avec de faux contacts.
+   ===================================================================== */
+const MILITANTS = { "test-francoise":"Françoise", "test-raphael":"Raphaël", "test-sara":"Sara" };
+
+const CAMPAGNES = [{
+  id:"meeting-6dec", nom:"Meeting du 6 décembre", ouverte:true, listes:["Adhérents","Sympathisants"],
+  accroche:"Bonjour [prénom du contact], c'est [votre prénom], de l'équipe Place publique de Boulogne-Billancourt. Je vous appelle pour le grand meeting de lancement de campagne de Raphaël Glucksmann, le dimanche 6 décembre à Paris. Vous avez deux minutes ?",
+  arguments:[
+    "Dimanche 6 décembre 2026. Portes à 12h30, début à 14h30, fin au plus tard à 17h15.",
+    "Paris Event Center, 20 avenue de la Porte de la Villette, Paris 19e. Métro 7, Porte de la Villette (sortie 3), 6 minutes à pied.",
+    "Entrée libre et gratuite, dans la limite des places.",
+    "S'inscrire sur glucks2027.fr/meeting : accès prioritaire et infos pratiques par mail.",
+    "Covoiturage et hébergement militant prévus : infos envoyées aux inscrits.",
+    "Salle accessible, zone dédiée aux personnes à mobilité réduite."
+  ],
+  repondeur:"Bonjour, c'est [votre prénom], de Place publique Boulogne-Billancourt. Je vous appelais pour le grand meeting de Raphaël Glucksmann, dimanche 6 décembre à 14h30, Porte de la Villette à Paris. Entrée libre, inscription sur glucks2027.fr/meeting. Bonne journée !",
+  questions:[
+    {id:"vient", label:"Vient au meeting", type:"choix", options:["Oui","Non","Peut-être"]},
+    {id:"inscrit", label:"Déjà inscrit sur le site", type:"choix", options:["Oui","Non","Va le faire"]},
+    {id:"accompagne", label:"Nombre d'accompagnants", type:"nombre"},
+    {id:"besoins", label:"Besoins", type:"multi", options:["Covoiturage","Hébergement","Accès mobilité réduite"]}
+  ]
+}];
+
+// Faux contacts, clairement fictifs. Numéros en 01 99 00 xx xx (plage réservée à la fiction par l'ARCEP).
+const FAUX = [
+  ["Test","Camille","Adhérents"],["Test","Dominique","Sympathisants"],["Test","Alex","Adhérents"],
+  ["Test","Claude","Adhérents"],["Test","Morgan","Sympathisants"],["Test","Sacha","Adhérents"]
+].map((c,i)=>({id:"c"+(i+1), nom:c[0], prenom:c[1], liste:c[2], tel:"+3319900"+String(1000+i).slice(-4)}));
+
+const RESERVATION_MIN = 20;
+const ST = "phoning_proto_v1";
+function etat(){ try{return JSON.parse(localStorage.getItem(ST))||{}}catch(e){return {}} }
+function sauver(e){ localStorage.setItem(ST, JSON.stringify(e)); }
+
+const relais = {
+  connexion(code){ const p = MILITANTS[code.trim().toLowerCase()]; return p ? {ok:true, prenom:p} : {ok:false}; },
+  campagnes(){ return CAMPAGNES.filter(c=>c.ouverte).map(c=>({id:c.id, nom:c.nom})); },
+  campagne(id){ return CAMPAGNES.find(c=>c.id===id); },
+  // Contacts encore à appeler pour une campagne
+  file(campId, militant){
+    const e=etat(), now=Date.now(), camp=this.campagne(campId);
+    return FAUX.filter(c=>{
+      if(!camp.listes.includes(c.liste)) return false;
+      const fiche=(e.fiches||{})[c.id]||{};
+      if(fiche.ne_plus_appeler || fiche.suppression) return false;      // exclus de toutes les campagnes
+      const r=((e.resultats||{})[campId]||{})[c.id];
+      if(r){
+        if(r.issue.includes("rappel") && r.rappelDate){                 // revient à la date demandée
+          if(new Date(r.rappelDate+"T00:00:00").getTime() > now) return false;
+          if(r.rappelServi) return false;
+        } else return false;                                            // un seul appel par campagne
+      }
+      const res=(e.reservations||{})[c.id];
+      if(res && res.jusqua>now && res.par!==militant) return false;    // réservé par quelqu'un d'autre
+      return true;
+    });
+  },
+  prochain(campId, militant){
+    const f=this.file(campId, militant);
+    if(!f.length) return null;
+    const c=f[0], e=etat();
+    e.reservations=e.reservations||{};
+    e.reservations[c.id]={par:militant, jusqua:Date.now()+RESERVATION_MIN*60000};
+    sauver(e);
+    return {id:c.id, nom:c.nom, prenom:c.prenom, statut:c.liste==="Adhérents"?"Adhérent":"Sympathisant", tel:c.tel};
+  },
+  enregistrer(campId, contactId, militant, data){
+    const e=etat();
+    e.resultats=e.resultats||{}; e.resultats[campId]=e.resultats[campId]||{};
+    const avant=e.resultats[campId][contactId];
+    if(avant && avant.issue.includes("rappel")) data.rappelServi = !data.issue.includes("rappel");
+    e.resultats[campId][contactId]=Object.assign({par:militant, date:new Date().toISOString()}, data);
+    e.fiches=e.fiches||{}; e.fiches[contactId]=e.fiches[contactId]||{};
+    if(data.issue.includes("ne_plus_appeler")) e.fiches[contactId].ne_plus_appeler=true;
+    if(data.issue.includes("suppression")){ e.fiches[contactId].suppression=true; e.alertes=(e.alertes||[]).concat([{contactId,date:new Date().toISOString()}]); }
+    if(e.reservations) delete e.reservations[contactId];
+    sauver(e);
+    return {ok:true};
+  }
+};
+
+/* ============================ INTERFACE ============================ */
+const $=id=>document.getElementById(id);
+let session={militant:null, campId:null, contact:null, compteur:0};
+
+function montrer(id){ ["e-connexion","e-accueil","e-fiche","e-fin"].forEach(x=>$(x).classList.toggle("cache",x!==id)); window.scrollTo(0,0); }
+
+function chargerSession(){
+  const s=JSON.parse(sessionStorage.getItem("phon_sess")||"null");
+  if(s){ session.militant=s.militant; ouvrirAccueil(); } else montrer("e-connexion");
+}
+
+$("code").addEventListener("input",()=>{
+  const ok=relais.connexion($("code").value).ok;
+  const dejaAccepte=localStorage.getItem("phon_charte_"+$("code").value.trim().toLowerCase());
+  $("charteBloc").classList.toggle("cache", !ok || !!dejaAccepte);
+});
+$("bConnexion").onclick=()=>{
+  const code=$("code").value.trim().toLowerCase(), r=relais.connexion(code);
+  $("errConnexion").textContent="";
+  if(!r.ok){ $("errConnexion").textContent="Code inconnu."; return; }
+  const k="phon_charte_"+code;
+  if(!localStorage.getItem(k)){
+    if(!$("charteOk").checked){ $("errConnexion").textContent="Merci d'accepter la charte."; $("charteBloc").classList.remove("cache"); return; }
+    localStorage.setItem(k,"1");
+  }
+  session.militant=r.prenom;
+  sessionStorage.setItem("phon_sess",JSON.stringify({militant:r.prenom}));
+  ouvrirAccueil();
+};
+$("bDeconnexion").onclick=()=>{ sessionStorage.removeItem("phon_sess"); session.militant=null; $("code").value=""; $("qui").textContent=""; montrer("e-connexion"); };
+
+function ouvrirAccueil(){
+  $("qui").textContent=session.militant;
+  $("prenomMilitant").textContent=session.militant;
+  const cs=relais.campagnes();
+  $("campagne").innerHTML=cs.map(c=>`<option value="${c.id}">${c.nom}</option>`).join("");
+  if(!cs.length){ $("campagne").innerHTML="<option>Aucune campagne ouverte</option>"; $("bProchain").disabled=true; }
+  majReste(); $("errAccueil").textContent="";
+  montrer("e-accueil");
+}
+function majReste(){
+  const id=$("campagne").value; if(!relais.campagne(id)) return;
+  const n=relais.file(id, session.militant).length;
+  $("resteInfo").textContent = n ? `${n} contact${n>1?"s":""} à appeler dans cette campagne.` : "Plus aucun contact à appeler dans cette campagne.";
+  $("bProchain").disabled = !n;
+}
+$("campagne").onchange=majReste;
+
+function esc(s){ return String(s).replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m])); }
+function telLisible(t){ return t.replace(/^\+33/,"0").replace(/(\d{2})(?=\d)/g,"$1 "); }
+
+$("bProchain").onclick=()=>{
+  session.campId=$("campagne").value;
+  const c=relais.prochain(session.campId, session.militant);
+  if(!c){ $("errAccueil").textContent="Plus aucun contact à appeler."; majReste(); return; }
+  session.contact=c;
+  const camp=relais.campagne(session.campId);
+  $("fNom").textContent=c.prenom+" "+c.nom;
+  $("fStatut").textContent=c.statut; $("fStatut").className="statut "+(c.statut==="Adhérent"?"adh":"sym");
+  $("fTel").textContent=telLisible(c.tel);
+  $("fReserve").textContent=`Ce contact vous est réservé ${RESERVATION_MIN} minutes.`;
+  $("bAppel").href="tel:"+c.tel;
+  const perso=s=>s.replace("[prénom du contact]",c.prenom).replace("[votre prénom]",session.militant);
+  $("fAccroche").textContent=perso(camp.accroche);
+  $("fRepondeur").textContent=perso(camp.repondeur);
+  $("fArguments").innerHTML=camp.arguments.map(a=>`<li>${esc(a)}</li>`).join("");
+  // formulaire
+  $("questions").innerHTML=camp.questions.map(q=>{
+    if(q.type==="choix") return `<div class="q"><span>${esc(q.label)}</span><div class="choix">${q.options.map(o=>`<label><input type="radio" name="q_${q.id}" value="${esc(o)}">${esc(o)}</label>`).join("")}</div></div>`;
+    if(q.type==="multi") return `<div class="q"><span>${esc(q.label)}</span><div class="choix">${q.options.map(o=>`<label><input type="checkbox" name="q_${q.id}" value="${esc(o)}">${esc(o)}</label>`).join("")}</div></div>`;
+    return `<div class="q"><span>${esc(q.label)}</span><input type="number" min="0" inputmode="numeric" name="q_${q.id}"></div>`;
+  }).join("");
+  document.querySelectorAll('input[name=issue]').forEach(i=>i.checked=false);
+  $("commentaire").value=""; $("rappelDate").value=""; $("rappelCreneau").value="";
+  $("blocAppel").classList.add("cache"); $("blocRappel").classList.add("cache"); $("blocFormulaire").classList.remove("cache");
+  $("errEnregistrer").textContent="";
+  $("bAppel").classList.remove("cache");
+  montrer("e-fiche");
+};
+
+$("bAppel").addEventListener("click",()=>{
+  // Le lien tel: ouvre le composeur ; on affiche le formulaire en même temps.
+  $("blocAppel").classList.remove("cache");
+  setTimeout(()=>$("blocAppel").scrollIntoView({behavior:"smooth"}),300);
+});
+
+document.addEventListener("change",ev=>{
+  if(ev.target.name!=="issue") return;
+  const v=ev.target.value, coche=ev.target.checked;
+  // pas décroché et répondeur : la personne n'a pas été jointe, on masque le formulaire
+  if(coche && (v==="pas_decroche"||v==="repondeur")){
+    document.querySelectorAll('input[name=issue]').forEach(i=>{ if(i!==ev.target) i.checked=false; });
+  } else if(coche){
+    document.querySelectorAll('input[name=issue][value=pas_decroche],input[name=issue][value=repondeur]').forEach(i=>i.checked=false);
+  }
+  const issues=[...document.querySelectorAll('input[name=issue]:checked')].map(i=>i.value);
+  $("blocRappel").classList.toggle("cache", !issues.includes("rappel"));
+  $("blocFormulaire").classList.toggle("cache", issues.includes("pas_decroche")||issues.includes("repondeur"));
+});
+
+$("bEnregistrer").onclick=()=>{
+  const issue=[...document.querySelectorAll('input[name=issue]:checked')].map(i=>i.value);
+  $("errEnregistrer").textContent="";
+  if(issue.includes("rappel") && !$("rappelDate").value){ $("errEnregistrer").textContent="Indiquez la date du rappel."; return; }
+  const joint=!(issue.includes("pas_decroche")||issue.includes("repondeur"));
+  const reponses={};
+  if(joint){
+    relais.campagne(session.campId).questions.forEach(q=>{
+      const els=[...document.querySelectorAll(`[name=q_${q.id}]`)];
+      if(q.type==="choix"){ const s=els.find(e=>e.checked); if(s) reponses[q.id]=s.value; }
+      else if(q.type==="multi"){ const s=els.filter(e=>e.checked).map(e=>e.value); if(s.length) reponses[q.id]=s; }
+      else if(els[0].value!=="") reponses[q.id]=Number(els[0].value);
+    });
+  }
+  if(!issue.length && !Object.keys(reponses).length && !$("commentaire").value.trim()){
+    $("errEnregistrer").textContent="Cochez une case ou remplissez le formulaire."; return;
+  }
+  relais.enregistrer(session.campId, session.contact.id, session.militant, {
+    issue, reponses, commentaire: joint ? $("commentaire").value.trim() : "",
+    rappelDate: issue.includes("rappel") ? $("rappelDate").value : "", rappelCreneau: issue.includes("rappel") ? $("rappelCreneau").value : ""
+  });
+  session.compteur++;
+  const n=relais.file(session.campId, session.militant).length;
+  let info=`Vous avez passé ${session.compteur} appel${session.compteur>1?"s":""} pendant cette session. `;
+  if(issue.includes("suppression")) info+="La demande de suppression est transmise à Sara. ";
+  info+= n ? `Il reste ${n} contact${n>1?"s":""} à appeler.` : "Il n'y a plus de contact à appeler dans cette campagne. Merci !";
+  $("finInfo").textContent=info;
+  $("bSuivant").disabled=!n;
+  montrer("e-fin");
+};
+$("bSuivant").onclick=()=>$("bProchain").onclick();
+$("bPause").onclick=()=>ouvrirAccueil();
+
+chargerSession();
+</script>
+</body>
+</html>
