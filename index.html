@@ -56,7 +56,10 @@ footer a{color:var(--gris)}
 <section id="e-connexion" class="carte">
   <h2>Connexion</h2>
   <p class="aide">Entrez votre code personnel.</p>
-  <input id="code" type="password" autocomplete="off" placeholder="Votre code">
+  <div style="display:flex;gap:8px">
+    <input id="code" type="password" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="Votre code">
+    <button type="button" id="bVoirCode" aria-label="Afficher le code" style="flex:none;border:1px solid #cbd2e0;border-radius:10px;background:#fff;padding:0 14px;font-size:15px;cursor:pointer">👁 Voir</button>
+  </div>
   <div id="charteBloc" class="cache">
     <h3>Charte de confidentialité</h3>
     <ul class="arg">
@@ -260,7 +263,13 @@ $("bConnexion").onclick=()=>{
   sessionStorage.setItem("phon_sess",JSON.stringify({militant:r.prenom}));
   ouvrirAccueil();
 };
-$("bDeconnexion").onclick=()=>{ sessionStorage.removeItem("phon_sess"); session.militant=null; $("code").value=""; $("qui").textContent=""; montrer("e-connexion"); };
+$("bVoirCode").onclick=()=>{
+  const i=$("code"), voir=i.type==="password";
+  i.type=voir?"text":"password";
+  $("bVoirCode").textContent=voir?"🙈 Cacher":"👁 Voir";
+  $("bVoirCode").setAttribute("aria-label",voir?"Cacher le code":"Afficher le code");
+};
+$("bDeconnexion").onclick=()=>{ sessionStorage.removeItem("phon_sess"); session.militant=null; $("code").value=""; $("code").type="password"; $("bVoirCode").textContent="👁 Voir"; $("qui").textContent=""; montrer("e-connexion"); };
 
 function ouvrirAccueil(){
   $("qui").textContent=session.militant;
