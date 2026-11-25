@@ -122,6 +122,7 @@ footer a{color:var(--gris)}
   <div id="blocAppel" class="cache">
     <div class="carte">
       <h2>Résultat de l'appel</h2>
+      <label class="case"><input type="checkbox" name="issue" value="decroche"> A décroché</label>
       <label class="case"><input type="checkbox" name="issue" value="pas_decroche"> N'a pas décroché</label>
       <label class="case"><input type="checkbox" name="issue" value="repondeur"> Laissé un message sur répondeur</label>
       <label class="case"><input type="checkbox" name="issue" value="rappel"> Veut être rappelé plus tard</label>
@@ -136,7 +137,7 @@ footer a{color:var(--gris)}
       <label class="case"><input type="checkbox" name="issue" value="ne_plus_appeler"> Ne souhaite plus être contacté par téléphone</label>
       <label class="case"><input type="checkbox" name="issue" value="suppression"> Souhaite être supprimé du fichier</label>
     </div>
-    <div class="carte" id="blocFormulaire">
+    <div class="carte cache" id="blocFormulaire">
       <h2>Formulaire</h2>
       <div id="questions"></div>
       <div class="q">
@@ -293,7 +294,7 @@ $("bProchain").onclick=async()=>{
   }).join("");
   document.querySelectorAll('input[name=issue]').forEach(i=>i.checked=false);
   $("commentaire").value=""; $("rappelDate").value=""; $("rappelCreneau").value="";
-  $("blocAppel").classList.add("cache"); $("blocRappel").classList.add("cache"); $("blocFormulaire").classList.remove("cache");
+  $("blocAppel").classList.add("cache"); $("blocRappel").classList.add("cache"); $("blocFormulaire").classList.add("cache");
   $("errEnregistrer").textContent="";
   $("comSauter").value=""; $("errSauter").textContent=""; $("blocSauter").classList.add("cache"); $("bSauter").classList.remove("cache");
   montrer("e-fiche");
@@ -311,17 +312,22 @@ document.addEventListener("change",ev=>{
     document.querySelectorAll('input[name=issue]').forEach(i=>{ if(i!==ev.target) i.checked=false; });
   } else if(coche){
     document.querySelectorAll('input[name=issue][value=pas_decroche],input[name=issue][value=repondeur]').forEach(i=>i.checked=false);
+    document.querySelector('input[name=issue][value=decroche]').checked=true;
+  } else if(v==="decroche"){
+    document.querySelectorAll('input[name=issue][value=rappel],input[name=issue][value=ne_plus_appeler],input[name=issue][value=suppression]').forEach(i=>i.checked=false);
   }
   const issues=[...document.querySelectorAll('input[name=issue]:checked')].map(i=>i.value);
   $("blocRappel").classList.toggle("cache", !issues.includes("rappel"));
-  $("blocFormulaire").classList.toggle("cache", issues.includes("pas_decroche")||issues.includes("repondeur"));
+  $("blocFormulaire").classList.toggle("cache", !issues.includes("decroche"));
 });
 
 $("bEnregistrer").onclick=async()=>{
-  const issue=[...document.querySelectorAll('input[name=issue]:checked')].map(i=>i.value);
+  const cases=[...document.querySelectorAll('input[name=issue]:checked')].map(i=>i.value);
   $("errEnregistrer").textContent="";
+  if(!cases.length){ $("errEnregistrer").textContent="Cochez au moins une case : a décroché, n'a pas décroché ou répondeur."; return; }
+  const issue=cases.filter(v=>v!=="decroche");
   if(issue.includes("rappel") && !$("rappelDate").value){ $("errEnregistrer").textContent="Indiquez la date du rappel."; return; }
-  const joint=!(issue.includes("pas_decroche")||issue.includes("repondeur"));
+  const joint=cases.includes("decroche");
   const camp=session.camps.find(c=>c.id===session.campId);
   const reponses={};
   if(joint){
@@ -331,9 +337,6 @@ $("bEnregistrer").onclick=async()=>{
       else if(q.type==="multi"){ const s=els.filter(e=>e.checked).map(e=>e.value); if(s.length) reponses[q.id]=s; }
       else if(els[0] && els[0].value!=="") reponses[q.id]=Number(els[0].value);
     });
-  }
-  if(!issue.length && !Object.keys(reponses).length && !$("commentaire").value.trim()){
-    $("errEnregistrer").textContent="Cochez une case ou remplissez le formulaire."; return;
   }
   occupe($("bEnregistrer"), true, "Enregistrement…");
   let d;
