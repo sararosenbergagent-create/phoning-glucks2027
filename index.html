@@ -96,6 +96,16 @@ footer a{color:var(--gris)}
     <div class="tel" id="fTel"></div>
     <p class="aide" id="fReserve"></p>
     <a class="btn rose" id="bAppel" href="#">Je lance l'appel</a>
+    <button class="btn gris" id="bSauter">Sauter ce contact</button>
+    <div id="blocSauter" class="cache">
+      <div class="q">
+        <span>Commentaire (facultatif)</span>
+        <textarea id="comSauter" placeholder="Ex. : je connais cette personne. Faits utiles seulement, pas d'avis sur la personne."></textarea>
+      </div>
+      <button class="btn bleu" id="bConfSauter">Confirmer et passer au suivant</button>
+      <button class="btn gris" id="bAnnulSauter">Annuler</button>
+      <div id="errSauter" class="erreur"></div>
+    </div>
   </div>
   <div class="carte">
     <h2>Arguments de la campagne</h2>
@@ -285,6 +295,7 @@ $("bProchain").onclick=async()=>{
   $("commentaire").value=""; $("rappelDate").value=""; $("rappelCreneau").value="";
   $("blocAppel").classList.add("cache"); $("blocRappel").classList.add("cache"); $("blocFormulaire").classList.remove("cache");
   $("errEnregistrer").textContent="";
+  $("comSauter").value=""; $("errSauter").textContent=""; $("blocSauter").classList.add("cache"); $("bSauter").classList.remove("cache");
   montrer("e-fiche");
 };
 
@@ -344,6 +355,21 @@ $("bEnregistrer").onclick=async()=>{
   montrer("e-fin");
 };
 $("bSuivant").onclick=()=>$("bProchain").onclick();
+
+$("bSauter").onclick=()=>{ $("bSauter").classList.add("cache"); $("blocSauter").classList.remove("cache"); $("comSauter").focus(); };
+$("bAnnulSauter").onclick=()=>{ $("blocSauter").classList.add("cache"); $("bSauter").classList.remove("cache"); $("errSauter").textContent=""; };
+$("bConfSauter").onclick=async()=>{
+  $("errSauter").textContent="";
+  occupe($("bConfSauter"), true, "Envoi…");
+  let d;
+  try{ d=await relais("sauter",{campagne:session.campId, contact:session.contact.id, commentaire:$("comSauter").value.trim()}); }
+  catch(e){ if(e.message!=="code") $("errSauter").textContent="Pas envoyé : "+messageErreur(null); return; }
+  finally{ occupe($("bConfSauter"), false, ""); }
+  if(!d.ok){ $("errSauter").textContent="Pas envoyé : "+messageErreur(d); return; }
+  const camp=session.camps.find(c=>c.id===session.campId); if(camp) camp.reste=d.reste;
+  if(!d.reste){ afficherReste(0); $("errAccueil").textContent="Plus aucun contact à appeler."; montrer("e-accueil"); return; }
+  $("bProchain").onclick();
+};
 $("bPause").onclick=()=>ouvrirAccueil();
 
 chargerSession();
