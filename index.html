@@ -49,7 +49,7 @@ footer a{color:var(--gris)}
 </head>
 <body>
 <header><b>📞 Phoning militants</b><small id="qui"></small></header>
-<div class="test">Prototype de test interne · faux contacts, aucune donnée réelle</div>
+<div class="test">Version de test · usage interne, ne pas diffuser le lien</div>
 <main>
 
 <!-- Écran 1 : connexion -->
@@ -98,6 +98,8 @@ footer a{color:var(--gris)}
     <h2>Arguments de la campagne</h2>
     <h3>Accroche</h3>
     <div class="accroche" id="fAccroche"></div>
+    <div id="blocSiOui"><h3>Si oui</h3>
+    <div class="accroche" id="fSiOui"></div></div>
     <h3>Infos clés</h3>
     <ul class="arg" id="fArguments"></ul>
     <h3>Message sur répondeur</h3>
@@ -144,124 +146,73 @@ footer a{color:var(--gris)}
 
 </main>
 <footer>
-  Prototype de test interne. Projet bénévole de Place publique Boulogne-Billancourt, inspiré des outils de Place publique Paris 15.<br>
+  Usage interne. Projet bénévole de Place publique Boulogne-Billancourt, inspiré des outils de Place publique Paris 15.<br>
   Infos du meeting : glucks2027.fr/meeting. Contact : Sara Rosenberg (<a href="mailto:contact@sara-rosenberg.fr">contact@sara-rosenberg.fr</a>)
 </footer>
 
 <script>
 /* =====================================================================
-   RELAIS SIMULÉ. Dans la vraie version, ces fonctions appellent le
-   script Google qui garde la clé Brevo. Ici tout reste dans le
-   navigateur, avec de faux contacts.
+   VERSION RÉELLE (v4). La page parle au relais Google, qui seul parle
+   à Brevo. Aucune clé ici. La page ne reçoit qu'un contact à la fois.
    ===================================================================== */
-const MILITANTS = { "test-francoise":"Françoise", "test-raphael":"Raphaël", "test-sara":"Sara" };
+const RELAIS_URL = "https://script.google.com/macros/s/AKfycbyDm0F5-rsWZkdyqZDssdhDIf3_aICJsMZUuczPiss8dNTg-b1Wqj8HZYPvK5VBZ4-pgQ/exec";
 
-const CAMPAGNES = [{
-  id:"meeting-6dec", nom:"Meeting du 6 décembre", ouverte:true, listes:["Adhérents","Sympathisants"],
-  accroche:"Bonjour [prénom du contact], c'est [votre prénom], de l'équipe Place publique de Boulogne-Billancourt. Je vous appelle pour le grand meeting de lancement de campagne de Raphaël Glucksmann, le dimanche 6 décembre à Paris. Vous avez deux minutes ?",
-  arguments:[
-    "Dimanche 6 décembre 2026. Portes à 12h30, début à 14h30, fin au plus tard à 17h15.",
-    "Paris Event Center, 20 avenue de la Porte de la Villette, Paris 19e. Métro 7, Porte de la Villette (sortie 3), 6 minutes à pied.",
-    "Entrée libre et gratuite, dans la limite des places.",
-    "S'inscrire sur glucks2027.fr/meeting : accès prioritaire et infos pratiques par mail.",
-    "Covoiturage et hébergement militant prévus : infos envoyées aux inscrits.",
-    "Salle accessible, zone dédiée aux personnes à mobilité réduite."
-  ],
-  repondeur:"Bonjour, c'est [votre prénom], de Place publique Boulogne-Billancourt. Je vous appelais pour le grand meeting de Raphaël Glucksmann, dimanche 6 décembre à 14h30, Porte de la Villette à Paris. Entrée libre, inscription sur glucks2027.fr/meeting. Bonne journée !",
-  questions:[
-    {id:"vient", label:"Vient au meeting", type:"choix", options:["Oui","Non","Peut-être"]},
-    {id:"inscrit", label:"Déjà inscrit sur le site", type:"choix", options:["Oui","Non","Va le faire"]},
-    {id:"accompagne", label:"Nombre d'accompagnants", type:"nombre"},
-    {id:"besoins", label:"Besoins", type:"multi", options:["Covoiturage","Hébergement","Accès mobilité réduite"]}
-  ]
-}];
-
-// Faux contacts, clairement fictifs. Numéros en 01 99 00 xx xx (plage réservée à la fiction par l'ARCEP).
-const FAUX = [
-  ["Test","Camille","Adhérents"],["Test","Dominique","Sympathisants"],["Test","Alex","Adhérents"],
-  ["Test","Claude","Adhérents"],["Test","Morgan","Sympathisants"],["Test","Sacha","Adhérents"]
-].map((c,i)=>({id:"c"+(i+1), nom:c[0], prenom:c[1], liste:c[2], tel:"+3319900"+String(1000+i).slice(-4)}));
-
-const RESERVATION_MIN = 20;
-const ST = "phoning_proto_v1";
-function etat(){ try{return JSON.parse(localStorage.getItem(ST))||{}}catch(e){return {}} }
-function sauver(e){ localStorage.setItem(ST, JSON.stringify(e)); }
-
-const relais = {
-  connexion(code){ const p = MILITANTS[code.trim().toLowerCase()]; return p ? {ok:true, prenom:p} : {ok:false}; },
-  campagnes(){ return CAMPAGNES.filter(c=>c.ouverte).map(c=>({id:c.id, nom:c.nom})); },
-  campagne(id){ return CAMPAGNES.find(c=>c.id===id); },
-  // Contacts encore à appeler pour une campagne
-  file(campId, militant){
-    const e=etat(), now=Date.now(), camp=this.campagne(campId);
-    return FAUX.filter(c=>{
-      if(!camp.listes.includes(c.liste)) return false;
-      const fiche=(e.fiches||{})[c.id]||{};
-      if(fiche.ne_plus_appeler || fiche.suppression) return false;      // exclus de toutes les campagnes
-      const r=((e.resultats||{})[campId]||{})[c.id];
-      if(r){
-        if(r.issue.includes("rappel") && r.rappelDate){                 // revient à la date demandée
-          if(new Date(r.rappelDate+"T00:00:00").getTime() > now) return false;
-          if(r.rappelServi) return false;
-        } else return false;                                            // un seul appel par campagne
-      }
-      const res=(e.reservations||{})[c.id];
-      if(res && res.jusqua>now && res.par!==militant) return false;    // réservé par quelqu'un d'autre
-      return true;
-    });
-  },
-  prochain(campId, militant){
-    const f=this.file(campId, militant);
-    if(!f.length) return null;
-    const c=f[0], e=etat();
-    e.reservations=e.reservations||{};
-    e.reservations[c.id]={par:militant, jusqua:Date.now()+RESERVATION_MIN*60000};
-    sauver(e);
-    return {id:c.id, nom:c.nom, prenom:c.prenom, statut:c.liste==="Adhérents"?"Adhérent":"Sympathisant", tel:c.tel};
-  },
-  enregistrer(campId, contactId, militant, data){
-    const e=etat();
-    e.resultats=e.resultats||{}; e.resultats[campId]=e.resultats[campId]||{};
-    const avant=e.resultats[campId][contactId];
-    if(avant && avant.issue.includes("rappel")) data.rappelServi = !data.issue.includes("rappel");
-    e.resultats[campId][contactId]=Object.assign({par:militant, date:new Date().toISOString()}, data);
-    e.fiches=e.fiches||{}; e.fiches[contactId]=e.fiches[contactId]||{};
-    if(data.issue.includes("ne_plus_appeler")) e.fiches[contactId].ne_plus_appeler=true;
-    if(data.issue.includes("suppression")){ e.fiches[contactId].suppression=true; e.alertes=(e.alertes||[]).concat([{contactId,date:new Date().toISOString()}]); }
-    if(e.reservations) delete e.reservations[contactId];
-    sauver(e);
-    return {ok:true};
-  }
-};
+async function relais(action, extra){
+  const code = sessionStorage.getItem("phon_code") || "";
+  const r = await fetch(RELAIS_URL, { method:"POST", body: JSON.stringify(Object.assign({action, code}, extra||{})) });
+  const d = await r.json();
+  if(!d.ok && d.err==="code"){ deconnecter("Votre code n'est plus valide. Demandez-en un nouveau à Sara."); throw new Error("code"); }
+  return d;
+}
+function messageErreur(d){
+  if(!d) return "Le relais ne répond pas. Vérifiez votre connexion et réessayez.";
+  if(d.err==="campagne") return "Cette campagne vient d'être fermée.";
+  return "Problème technique, réessayez dans un instant. Si ça continue, prévenez Sara.";
+}
 
 /* ============================ INTERFACE ============================ */
 const $=id=>document.getElementById(id);
-let session={militant:null, campId:null, contact:null, compteur:0};
+let session={militant:null, campId:null, contact:null, compteur:0, camps:[], resaMin:20};
 
 function montrer(id){ ["e-connexion","e-accueil","e-fiche","e-fin"].forEach(x=>$(x).classList.toggle("cache",x!==id)); window.scrollTo(0,0); }
+function occupe(btn, oui, texte){ btn.disabled=oui; if(texte!==undefined){ if(oui){ btn.dataset.t=btn.textContent; btn.textContent=texte; } else if(btn.dataset.t){ btn.textContent=btn.dataset.t; } } }
+const campCourante=()=>session.camps.find(c=>c.id===$("campagne").value);
 
-function chargerSession(){
-  const s=JSON.parse(sessionStorage.getItem("phon_sess")||"null");
-  if(s){ session.militant=s.militant; ouvrirAccueil(); } else montrer("e-connexion");
+async function connecter(code){
+  const d = await relais("connexion");
+  if(!d.ok) throw d;
+  session.militant=d.prenom; session.camps=d.campagnes||[]; session.resaMin=d.reservationMin||20;
+  ouvrirAccueil();
+}
+
+async function chargerSession(){
+  if(sessionStorage.getItem("phon_code")){
+    try{ await connecter(); } catch(e){ montrer("e-connexion"); }
+  } else montrer("e-connexion");
 }
 
 $("code").addEventListener("input",()=>{
-  const ok=relais.connexion($("code").value).ok;
-  const dejaAccepte=localStorage.getItem("phon_charte_"+$("code").value.trim().toLowerCase());
-  $("charteBloc").classList.toggle("cache", !ok || !!dejaAccepte);
+  const k=$("code").value.trim().toLowerCase();
+  $("charteBloc").classList.toggle("cache", k.length<4 || !!localStorage.getItem("phon_charte_"+k));
 });
-$("bConnexion").onclick=()=>{
-  const code=$("code").value.trim().toLowerCase(), r=relais.connexion(code);
+$("bConnexion").onclick=async()=>{
+  const code=$("code").value.trim().toLowerCase();
   $("errConnexion").textContent="";
-  if(!r.ok){ $("errConnexion").textContent="Code inconnu."; return; }
+  if(!code){ $("errConnexion").textContent="Entrez votre code."; return; }
   const k="phon_charte_"+code;
-  if(!localStorage.getItem(k)){
-    if(!$("charteOk").checked){ $("errConnexion").textContent="Merci d'accepter la charte."; $("charteBloc").classList.remove("cache"); return; }
+  if(!localStorage.getItem(k) && !$("charteOk").checked){ $("errConnexion").textContent="Merci d'accepter la charte."; $("charteBloc").classList.remove("cache"); return; }
+  occupe($("bConnexion"), true, "Connexion…");
+  sessionStorage.setItem("phon_code", code);
+  try{
+    const d = await relais("connexion");
+    if(!d.ok){ sessionStorage.removeItem("phon_code"); $("errConnexion").textContent = d.err==="code" ? "Code inconnu." : messageErreur(d); return; }
     localStorage.setItem(k,"1");
-  }
-  session.militant=r.prenom;
-  sessionStorage.setItem("phon_sess",JSON.stringify({militant:r.prenom}));
-  ouvrirAccueil();
+    session.militant=d.prenom; session.camps=d.campagnes||[]; session.resaMin=d.reservationMin||20;
+    ouvrirAccueil();
+  } catch(e){
+    sessionStorage.removeItem("phon_code");
+    $("errConnexion").textContent = e.message==="code" ? "Code inconnu." : messageErreur(null);
+  } finally { occupe($("bConnexion"), false, ""); }
 };
 $("bVoirCode").onclick=()=>{
   const i=$("code"), voir=i.type==="password";
@@ -269,44 +220,59 @@ $("bVoirCode").onclick=()=>{
   $("bVoirCode").textContent=voir?"🙈 Cacher":"👁 Voir";
   $("bVoirCode").setAttribute("aria-label",voir?"Cacher le code":"Afficher le code");
 };
-$("bDeconnexion").onclick=()=>{ sessionStorage.removeItem("phon_sess"); session.militant=null; $("code").value=""; $("code").type="password"; $("bVoirCode").textContent="👁 Voir"; $("qui").textContent=""; montrer("e-connexion"); };
+function deconnecter(msg){
+  sessionStorage.removeItem("phon_code"); session.militant=null; session.camps=[];
+  $("code").value=""; $("code").type="password"; $("bVoirCode").textContent="👁 Voir"; $("qui").textContent="";
+  montrer("e-connexion"); $("errConnexion").textContent=msg||"";
+}
+$("bDeconnexion").onclick=()=>deconnecter();
 
 function ouvrirAccueil(){
   $("qui").textContent=session.militant;
   $("prenomMilitant").textContent=session.militant;
-  const cs=relais.campagnes();
-  $("campagne").innerHTML=cs.map(c=>`<option value="${c.id}">${c.nom}</option>`).join("");
-  if(!cs.length){ $("campagne").innerHTML="<option>Aucune campagne ouverte</option>"; $("bProchain").disabled=true; }
-  majReste(); $("errAccueil").textContent="";
+  const cs=session.camps;
+  $("campagne").innerHTML=cs.map(c=>`<option value="${esc(c.id)}">${esc(c.nom)}</option>`).join("");
+  $("errAccueil").textContent="";
+  if(!cs.length){ $("campagne").innerHTML="<option>Aucune campagne ouverte</option>"; $("bProchain").disabled=true; $("resteInfo").textContent=""; }
+  else afficherReste(campCourante().reste);
   montrer("e-accueil");
 }
-function majReste(){
-  const id=$("campagne").value; if(!relais.campagne(id)) return;
-  const n=relais.file(id, session.militant).length;
+function afficherReste(n){
   $("resteInfo").textContent = n ? `${n} contact${n>1?"s":""} à appeler dans cette campagne.` : "Plus aucun contact à appeler dans cette campagne.";
   $("bProchain").disabled = !n;
 }
-$("campagne").onchange=majReste;
+$("campagne").onchange=async()=>{
+  const c=campCourante(); if(!c) return;
+  afficherReste(c.reste); $("resteInfo").textContent+=" (mise à jour…)";
+  try{ const d=await relais("reste",{campagne:c.id}); if(d.ok){ c.reste=d.reste; afficherReste(d.reste); } }catch(e){}
+};
 
 function esc(s){ return String(s).replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m])); }
 function telLisible(t){ return t.replace(/^\+33/,"0").replace(/(\d{2})(?=\d)/g,"$1 "); }
 
-$("bProchain").onclick=()=>{
-  session.campId=$("campagne").value;
-  const c=relais.prochain(session.campId, session.militant);
-  if(!c){ $("errAccueil").textContent="Plus aucun contact à appeler."; majReste(); return; }
-  session.contact=c;
-  const camp=relais.campagne(session.campId);
-  $("fNom").textContent=c.prenom+" "+c.nom;
+$("bProchain").onclick=async()=>{
+  const camp=campCourante(); if(!camp) return;
+  session.campId=camp.id;
+  $("errAccueil").textContent="";
+  occupe($("bProchain"), true, "Recherche du contact…"); occupe($("bSuivant"), true);
+  let d;
+  try{ d=await relais("prochain",{campagne:camp.id}); }
+  catch(e){ if(e.message!=="code"){ $("errAccueil").textContent=messageErreur(null); montrer("e-accueil"); } return; }
+  finally{ occupe($("bProchain"), false, ""); occupe($("bSuivant"), false); }
+  if(!d.ok){ $("errAccueil").textContent=messageErreur(d); montrer("e-accueil"); return; }
+  if(!d.contact){ camp.reste=0; afficherReste(0); $("errAccueil").textContent="Plus aucun contact à appeler."; montrer("e-accueil"); return; }
+  const c=d.contact; session.contact=c;
+  $("fNom").textContent=(c.prenom+" "+c.nom).trim();
   $("fStatut").textContent=c.statut; $("fStatut").className="statut "+(c.statut==="Adhérent"?"adh":"sym");
   $("fTel").textContent=telLisible(c.tel);
-  $("fReserve").textContent=`Ce contact vous est réservé ${RESERVATION_MIN} minutes.`;
+  $("fReserve").textContent=`Ce contact vous est réservé ${session.resaMin} minutes.`+(c.rappel?` Il avait demandé à être rappelé (${c.rappel}).`:"");
   $("bAppel").href="tel:"+c.tel;
-  const perso=s=>s.replace("[prénom du contact]",c.prenom).replace("[votre prénom]",session.militant);
+  const perso=s=>s.split("[prénom du contact]").join(c.prenom||"").split("[votre prénom]").join(session.militant);
   $("fAccroche").textContent=perso(camp.accroche);
+  $("fSiOui").textContent=perso(camp.siOui||"");
+  $("blocSiOui").classList.toggle("cache", !camp.siOui);
   $("fRepondeur").textContent=perso(camp.repondeur);
   $("fArguments").innerHTML=camp.arguments.map(a=>`<li>${esc(a)}</li>`).join("");
-  // formulaire
   $("questions").innerHTML=camp.questions.map(q=>{
     if(q.type==="choix") return `<div class="q"><span>${esc(q.label)}</span><div class="choix">${q.options.map(o=>`<label><input type="radio" name="q_${q.id}" value="${esc(o)}">${esc(o)}</label>`).join("")}</div></div>`;
     if(q.type==="multi") return `<div class="q"><span>${esc(q.label)}</span><div class="choix">${q.options.map(o=>`<label><input type="checkbox" name="q_${q.id}" value="${esc(o)}">${esc(o)}</label>`).join("")}</div></div>`;
@@ -316,12 +282,10 @@ $("bProchain").onclick=()=>{
   $("commentaire").value=""; $("rappelDate").value=""; $("rappelCreneau").value="";
   $("blocAppel").classList.add("cache"); $("blocRappel").classList.add("cache"); $("blocFormulaire").classList.remove("cache");
   $("errEnregistrer").textContent="";
-  $("bAppel").classList.remove("cache");
   montrer("e-fiche");
 };
 
 $("bAppel").addEventListener("click",()=>{
-  // Le lien tel: ouvre le composeur ; on affiche le formulaire en même temps.
   $("blocAppel").classList.remove("cache");
   setTimeout(()=>$("blocAppel").scrollIntoView({behavior:"smooth"}),300);
 });
@@ -329,7 +293,6 @@ $("bAppel").addEventListener("click",()=>{
 document.addEventListener("change",ev=>{
   if(ev.target.name!=="issue") return;
   const v=ev.target.value, coche=ev.target.checked;
-  // pas décroché et répondeur : la personne n'a pas été jointe, on masque le formulaire
   if(coche && (v==="pas_decroche"||v==="repondeur")){
     document.querySelectorAll('input[name=issue]').forEach(i=>{ if(i!==ev.target) i.checked=false; });
   } else if(coche){
@@ -340,29 +303,36 @@ document.addEventListener("change",ev=>{
   $("blocFormulaire").classList.toggle("cache", issues.includes("pas_decroche")||issues.includes("repondeur"));
 });
 
-$("bEnregistrer").onclick=()=>{
+$("bEnregistrer").onclick=async()=>{
   const issue=[...document.querySelectorAll('input[name=issue]:checked')].map(i=>i.value);
   $("errEnregistrer").textContent="";
   if(issue.includes("rappel") && !$("rappelDate").value){ $("errEnregistrer").textContent="Indiquez la date du rappel."; return; }
   const joint=!(issue.includes("pas_decroche")||issue.includes("repondeur"));
+  const camp=session.camps.find(c=>c.id===session.campId);
   const reponses={};
   if(joint){
-    relais.campagne(session.campId).questions.forEach(q=>{
+    camp.questions.forEach(q=>{
       const els=[...document.querySelectorAll(`[name=q_${q.id}]`)];
       if(q.type==="choix"){ const s=els.find(e=>e.checked); if(s) reponses[q.id]=s.value; }
       else if(q.type==="multi"){ const s=els.filter(e=>e.checked).map(e=>e.value); if(s.length) reponses[q.id]=s; }
-      else if(els[0].value!=="") reponses[q.id]=Number(els[0].value);
+      else if(els[0] && els[0].value!=="") reponses[q.id]=Number(els[0].value);
     });
   }
   if(!issue.length && !Object.keys(reponses).length && !$("commentaire").value.trim()){
     $("errEnregistrer").textContent="Cochez une case ou remplissez le formulaire."; return;
   }
-  relais.enregistrer(session.campId, session.contact.id, session.militant, {
-    issue, reponses, commentaire: joint ? $("commentaire").value.trim() : "",
-    rappelDate: issue.includes("rappel") ? $("rappelDate").value : "", rappelCreneau: issue.includes("rappel") ? $("rappelCreneau").value : ""
-  });
+  occupe($("bEnregistrer"), true, "Enregistrement…");
+  let d;
+  try{
+    d=await relais("enregistrer",{campagne:session.campId, contact:session.contact.id, data:{
+      issue, reponses, commentaire: joint ? $("commentaire").value.trim() : "",
+      rappelDate: issue.includes("rappel") ? $("rappelDate").value : "", rappelCreneau: issue.includes("rappel") ? $("rappelCreneau").value : ""
+    }});
+  } catch(e){ if(e.message!=="code") $("errEnregistrer").textContent="Pas enregistré : "+messageErreur(null); return; }
+  finally{ occupe($("bEnregistrer"), false, ""); }
+  if(!d.ok){ $("errEnregistrer").textContent="Pas enregistré : "+messageErreur(d); return; }
   session.compteur++;
-  const n=relais.file(session.campId, session.militant).length;
+  const n=d.reste; camp.reste=n;
   let info=`Vous avez passé ${session.compteur} appel${session.compteur>1?"s":""} pendant cette session. `;
   if(issue.includes("suppression")) info+="La demande de suppression est transmise à Sara. ";
   info+= n ? `Il reste ${n} contact${n>1?"s":""} à appeler.` : "Il n'y a plus de contact à appeler dans cette campagne. Merci !";
